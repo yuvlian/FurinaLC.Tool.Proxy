@@ -7,8 +7,13 @@
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <RootNamespace>FireflySR.Tool.Proxy.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
-    <AssemblyName>FireflySR.Tool.Proxy.$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>FurinaLC.Tool.Proxy.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <AssemblyName>FurinaLC.Tool.Proxy.$(MSBuildProjectName)</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.1.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
 
 </Project>

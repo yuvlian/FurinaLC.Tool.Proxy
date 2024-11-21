@@ -1,4 +1,4 @@
-namespace FireflySR.Tool.Proxy;
+namespace FurinaLC.Tool.Proxy;
 
 public class ProxyConfig
 {

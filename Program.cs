@@ -1,34 +1,52 @@
 ﻿using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
+using Serilog;
 
-namespace FireflySR.Tool.Proxy
+namespace FurinaLC.Tool.Proxy
 {
     internal static class Program
     {
-        private const string Title = "FreeSR Proxy (Alter)";
+        private const string Title = "FurinaLC Proxy";
         private const string ConfigPath = "config.json";
         private const string ConfigTemplatePath = "config.tmpl.json";
-        private const string GuardianPath = "tool/FireflySR.Tool.Proxy.Guardian.exe";
+        private const string GuardianPath = "tool/FurinaLC.Tool.Proxy.Guardian.exe";
 
         private static ProxyService s_proxyService = null!;
         private static bool s_clearupd = false;
-        
+
         private static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .CreateLogger();
+
+            Log.Information("{Title} started.", Title);
+            Log.Information("{Title} is a fork of https://git.xeondev.com/YYHEggEgg/FireflySR.Tool.Proxy/", Title);
             Console.Title = Title;
-            Console.WriteLine($"Firefly.Tool.Proxy - Credits for original FreeSR Proxy");
+
             _ = Task.Run(WatchGuardianAsync);
-            CheckProxy();
-            InitConfig();
 
-            var conf = JsonSerializer.Deserialize(File.ReadAllText(ConfigPath), ProxyConfigContext.Default.ProxyConfig) ?? throw new FileLoadException("Please correctly configure config.json.");
-            s_proxyService = new ProxyService(conf.DestinationHost, conf.DestinationPort, conf);
-            Console.WriteLine($"Proxy now running");
-            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
-            Console.CancelKeyPress += OnProcessExit;
+            try
+            {
+                CheckProxy();
+                InitConfig();
 
-            Thread.Sleep(-1);
+                var conf = JsonSerializer.Deserialize(File.ReadAllText(ConfigPath), ProxyConfigContext.Default.ProxyConfig)
+                           ?? throw new FileLoadException("Please configure 'config.json' correctly.");
+                s_proxyService = new ProxyService(conf.DestinationHost, conf.DestinationPort, conf);
+
+                Log.Information("Proxy server is running.");
+                AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+                Console.CancelKeyPress += OnProcessExit;
+
+                Thread.Sleep(-1);
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "An unexpected error occurred during application startup.");
+                Environment.Exit(1);
+            }
         }
 
         private static async Task WatchGuardianAsync()
@@ -36,26 +54,29 @@ namespace FireflySR.Tool.Proxy
             var proc = StartGuardian();
             if (proc == null)
             {
-                Console.WriteLine("Guardian start failed. Your proxy settings may not be able to recover after closing.");
+                Log.Warning("Guardian start failed. Proxy settings might not revert after closing.");
                 return;
             }
 
-            // Notice that on some PTY, closing it may lead
-            // to Guardian be killed, not the Proxy itself.
-            // Therefore, Proxy should also watch Guardian
-            // and exit when Guardian dies.
+            Log.Information("Guardian started successfully.");
+
             while (!proc.HasExited)
             {
                 await Task.Delay(1000);
             }
-            Console.WriteLine("! Guardian exit");
+
+            Log.Warning("Guardian process exited.");
             OnProcessExit(null, null);
             Environment.Exit(0);
         }
 
         private static Process? StartGuardian()
         {
-            if (!OperatingSystem.IsWindows()) return null;
+            if (!OperatingSystem.IsWindows())
+            {
+                Log.Information("Guardian is not supported on this OS.");
+                return null;
+            }
 
             try
             {
@@ -66,8 +87,7 @@ namespace FireflySR.Tool.Proxy
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
-                Console.WriteLine();
+                Log.Error(ex, "Failed to start Guardian process.");
                 return null;
             }
         }
@@ -76,6 +96,7 @@ namespace FireflySR.Tool.Proxy
         {
             if (!File.Exists(ConfigPath))
             {
+                Log.Information("Config file not found. Creating a new one from template.");
                 File.Copy(ConfigTemplatePath, ConfigPath);
             }
         }
@@ -91,19 +112,17 @@ namespace FireflySR.Tool.Proxy
         {
             try
             {
-                string? ProxyInfo = GetProxyInfo();
-                if (ProxyInfo != null)
+                string? proxyInfo = GetProxyInfo();
+                if (proxyInfo != null)
                 {
-                    Console.WriteLine("well... It seems you are using other proxy software(such as Clash,V2RayN,Fiddler,etc)");
-                    Console.WriteLine($"You system proxy: {ProxyInfo}");
-                    Console.WriteLine("You have to close all other proxy software to make sure FireflySR.Tool.Proxy can work well.");
-                    Console.WriteLine("Press any key to continue if you closed other proxy software, or you think you are not using other proxy.");
+                    Log.Warning("Detected another proxy: {ProxyInfo}. Please disable it.", proxyInfo);
+                    Console.WriteLine("Press any key to continue if you have disabled other proxy.");
                     Console.ReadKey();
                 }
             }
-            catch (NullReferenceException)
+            catch (Exception ex)
             {
-
+                Log.Debug(ex, "Unable to check system proxy.");
             }
         }
 
@@ -115,13 +134,12 @@ namespace FireflySR.Tool.Proxy
                 Uri? proxyUri = proxy.GetProxy(new Uri("https://www.example.com"));
                 if (proxyUri == null) return null;
 
-                string proxyIP = proxyUri.Host;
-                int proxyPort = proxyUri.Port;
-                string info = proxyIP + ":" + proxyPort;
-                return info;
+                string proxyInfo = $"{proxyUri.Host}:{proxyUri.Port}";
+                return proxyInfo;
             }
-            catch
+            catch (Exception ex)
             {
+                Log.Debug(ex, "Failed to retrieve proxy info.");
                 return null;
             }
         }
