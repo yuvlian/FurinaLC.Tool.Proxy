@@ -40,5 +40,5 @@ Self explanatory by looking at the config.json
 ## Credits
 
 - [FireflySR.Tool.Proxy](https://git.xeondev.com/YYHEggEgg/FireflySR.Tool.Proxy/releases)
-- [FreeLC](https://git.xeondev.com/Moux23333/FreeLC) & `FreeLC.Tool.Proxy`
+- [FreeSR](https://git.xeondev.com/Moux23333/FreeSR) & `FreeSR.Tool.Proxy`
 - Rebooted `Titanium.Web.Proxy` [Unobtanium.Web.Proxy](https://github.com/svrooij/titanium-web-proxy.git)
